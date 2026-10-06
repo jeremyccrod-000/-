@@ -1,0 +1,297 @@
+// ==================== 【設定區】 ====================
+// 1. Google Doc 範本檔案 ID
+const TEMPLATE_DOC_ID = '1FQQmcL9RdM9UKQ2mOVBr0uBAuCrZ0tGHsyIoKz3-Tig';
+
+// 2. 指定產出儲存的雲端資料夾 ID
+const SPECIFIED_FOLDER_ID = '1hzPos2XAbKlKcrBnszyezzROLeZwEbs4';
+// ===================================================
+
+// 一、診斷標籤對應 (d1 ~ d14)
+const DIAGNOSIS_MAP = {
+  '無': 'd1', '痛風': 'd2', '高血壓': 'd3', '糖尿病': 'd4', '心血管疾病': 'd5',
+  '呼吸系統疾病': 'd6', '失智症': 'd7', '腎臟疾病': 'd8', '肝膽腸胃疾病': 'd9',
+  '精神科疾病': 'd10', '帕金森氏症': 'd11', '腦血管疾病': 'd12', '癌症': 'd13'
+};
+
+// 二、生理功能單選對應 (s1 ~ s28)
+const SINGLE_CHOICE_MAP = {
+  '清醒': 's1', '嗜睡': 's2', '混亂': 's3', '昏迷': 's4',
+  '口語': 's5', '手勢或紙筆': 's6', '無': 's7',
+  '複雜或抽象語句': 's8', '簡單句子': 's9', '單字': 's10', '無法理解': 's11',
+  '佳': 's12', '普通': 's13', '被動': 's14', '差': 's15',
+  '視覺_正常': 's16', '視覺_受損': 's17', '視覺_N/A': 's18',
+  '聽覺_正常': 's19', '聽覺_受損': 's20', '聽覺_N/A': 's21',
+  '步行': 's22', '輔助器': 's23', '輪椅': 's24', '臥床': 's25',
+  '自己吃': 's26', '餵食': 's27', '管灌': 's28'
+};
+
+// 三、輔具標籤對應 (a1 ~ a21) - 吻合範本
+const AIDS_KEY_MAP = {
+  '移位板': 1, '止滑墊': 2, '助行器': 3, '電話輔助器': 4,
+  '床邊扶手': 5, '特殊餐具': 6, '四腳拐': 7, '語音溝通板': 8,
+  '特殊擺位輔具': 9, '水龍頭': 10, '一般輪椅': 11, '特殊': 12, '滑鼠': 12, '鍵盤': 12,
+  '副木': 13, '穿衣': 14, '穿褲': 14, '特製輪椅': 15, '握筆輔具': 16,
+  '便盆椅': 17, '繫鈕釦輔具': 18,
+  '洗澡座椅': 20, '長柄海綿刷': 21
+};
+
+// 四、主要問題對應 (p1 ~ p15) - 吻合範本
+const PROBLEM_MAP = {
+  '關節活動受限': 'p1',
+  '疼痛': 'p2',
+  '意識/警醒度不佳': 'p3',
+  '姿勢控制不佳': 'p4',
+  '肌肉張力異常': 'p5',
+  '肌力不足': 'p6',
+  '耐力不足': 'p7',
+  '翻身困難': 'p8', '躺到坐困難': 'p8', '轉位困難': 'p8',
+  '坐姿平衡困難': 'p9', '站姿平衡困難': 'p9',
+  '精細動作不佳': 'p10',
+  '協調不佳': 'p11',
+  '步行困難': 'p12', '上下樓梯困難': 'p12',
+  '認知功能不佳': 'p13',
+  '自我照顧能力不佳': 'p14',
+  '其他': 'p15'
+};
+
+// 五、短期目標對應 (st1 ~ st15) - 吻合範本
+const SHORT_TERM_MAP = {
+  '改善關節活動度': 'st1',
+  '改善疼痛': 'st2',
+  '改善警醒度': 'st3',
+  '改善姿勢控制': 'st4',
+  '正常化張力': 'st5',
+  '加強肌力': 'st6',
+  '加強心肺耐力': 'st7',
+  '強化翻身': 'st8', '強化轉位': 'st8', '強化躺到坐': 'st8',
+  '增進坐姿平衡': 'st9', '增進站姿平衡': 'st9',
+  '改善精細動作': 'st10',
+  '改善協調功能': 'st11',
+  '強化功能性移行': 'st12',
+  '促進認知功能': 'st13',
+  '促進ADL功能': 'st14',
+  '其他': 'st15'
+};
+
+// 五、長期目標對應 (lt1 ~ lt8) - 吻合範本
+const LONG_TERM_MAP = {
+  '維持現有功能': 'lt1',
+  '部分需他人照顧': 'lt2',
+  '完全獨立': 'lt3',
+  '減少臥床時間': 'lt4',
+  '自行使用輪椅': 'lt5',
+  '協助輔具下步行': 'lt6',
+  '使用輔具下步行': 'lt6',
+  '自行步行': 'lt7',
+  '其他': 'lt8'
+};
+
+function cleanText(text) {
+  if (!text) return '';
+  return String(text).replace(/^[團個][：:]/, '').trim();
+}
+
+function escapeRegex(str) {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function replaceTag(body, tag, val) {
+  const pattern = `\\{\\{${escapeRegex(tag)}\\}\\}`;
+  body.replaceText(pattern, val !== undefined && val !== null ? String(val) : '');
+}
+
+function onFormSubmitAutoFillNew(e) {
+  if (!e || !e.response) {
+    Logger.log('⚠️ 本函式需由 Google 表單提交事件觸發。');
+    return;
+  }
+
+  const templateFile = DriveApp.getFileById(TEMPLATE_DOC_ID);
+  let targetFolder;
+  try {
+    targetFolder = DriveApp.getFolderById(SPECIFIED_FOLDER_ID);
+  } catch (err) {
+    targetFolder = templateFile.getParents().next();
+  }
+
+  // 1. 蒐集表單資料
+  const itemResponses = e.response.getItemResponses();
+  const formData = {};
+  const allValues = [];
+
+  itemResponses.forEach(res => {
+    const title = res.getItem().getTitle().trim();
+    const resp = res.getResponse();
+    formData[title] = resp;
+
+    if (Array.isArray(resp)) {
+      resp.forEach(r => {
+        if (Array.isArray(r)) r.forEach(sub => allValues.push(String(sub)));
+        else allValues.push(String(r));
+      });
+    } else if (resp !== null && resp !== undefined) {
+      allValues.push(String(resp));
+    }
+  });
+
+  const caseName = cleanText(formData['姓名']) || '長輩';
+  const caseNo = cleanText(formData['案號']) || '';
+  const evalDate = cleanText(formData['評估日期']) || Utilities.formatDate(new Date(), 'Asia/Taipei', 'yyyy-MM-dd');
+
+  // 2. 複製範本建立新檔
+  const newFileName = `${evalDate}_活動介入初次評估單_${caseName}`;
+  const newDocFile = templateFile.makeCopy(newFileName, targetFolder);
+  const newDoc = DocumentApp.openById(newDocFile.getId());
+  const body = newDoc.getBody();
+
+  // 3. 填寫個案基本資料
+  replaceTag(body, '案號', caseNo);
+  replaceTag(body, '姓名', caseName);
+  replaceTag(body, '年齡', formData['年齡'] || '');
+  replaceTag(body, '評估日期', evalDate);
+  replaceTag(body, '受託日', formData['受託日'] || '');
+  replaceTag(body, '注意事項', formData['注意事項'] || '');
+
+  // 簽章留白（做法 A：未填寫自動留白）
+  const supervisor = formData['指導者簽章/姓名'] || formData['指導者姓名'] || formData['指導者簽章'] || '';
+  const assessor = formData['評估者簽章/姓名'] || formData['評估者姓名'] || formData['評估者簽章'] || '';
+  replaceTag(body, 'supervisor_name', String(supervisor).trim());
+  replaceTag(body, 'assessor_name', String(assessor).trim());
+
+  const gender = formData['性別'] || '';
+  replaceTag(body, '性別_男', gender === '男' ? '■' : '□');
+  replaceTag(body, '性別_女', gender === '女' ? '■' : '□');
+
+  // 4. 一、診斷 (d1 ~ d14)
+  const userDiag = [].concat(formData['診斷'] || []);
+  let hasOtherDiag = false;
+  Object.keys(DIAGNOSIS_MAP).forEach(d => {
+    replaceTag(body, DIAGNOSIS_MAP[d], userDiag.includes(d) ? '■' : '□');
+  });
+  userDiag.forEach(d => {
+    if (!DIAGNOSIS_MAP[d] && d !== '其他') hasOtherDiag = true;
+  });
+  replaceTag(body, 'd14', (hasOtherDiag || userDiag.includes('其他')) ? '■' : '□');
+
+  // 5. 二、生理功能單選 (s1 ~ s28)
+  Object.keys(SINGLE_CHOICE_MAP).forEach(k => {
+    let isChecked = false;
+    if (k.startsWith('視覺_')) isChecked = (formData['視覺'] === k.replace('視覺_', ''));
+    else if (k.startsWith('聽覺_')) isChecked = (formData['聽覺'] === k.replace('聽覺_', ''));
+    else isChecked = allValues.includes(k);
+    replaceTag(body, SINGLE_CHOICE_MAP[k], isChecked ? '■' : '□');
+  });
+  replaceTag(body, 's29', '□');
+
+  // 認知分數 {{score}}
+  let scoreVal = '';
+  allValues.forEach(v => {
+    if (v.includes('Ind.') || v.includes('Stand-by') || v.includes('Min.') || 
+        v.includes('Mod.') || v.includes('Max.') || v.includes('Total.')) {
+      const m = v.match(/\d+/);
+      if (m) scoreVal = m[0];
+    }
+  });
+  replaceTag(body, 'score', scoreVal);
+
+  // 6. 三、建議輔具標籤 (吻合範本上的 a1 ~ a21 與細項)
+  for (let i = 1; i <= 21; i++) {
+    replaceTag(body, `a${i}`, '□');
+  }
+  ['a6_1','a6_2','a6_3','a6_4','a10_1','a10_2','a12_1','a12_2','a14_1','a14_2'].forEach(sub => replaceTag(body, sub, ''));
+  replaceTag(body, 'a_other', '');
+
+  const suggestAids = [].concat(formData['建議增加、修改、訓練使用之輔具'] || formData['目前使用輔具'] || []);
+  suggestAids.forEach(aid => {
+    Object.keys(AIDS_KEY_MAP).forEach(key => {
+      if (aid.includes(key)) {
+        replaceTag(body, `a${AIDS_KEY_MAP[key]}`, '■');
+      }
+    });
+    // 細項標記
+    if (aid.includes('湯匙')) replaceTag(body, 'a6_1', '■');
+    if (aid.includes('筷子')) replaceTag(body, 'a6_2', '■');
+    if (aid.includes('碗盤')) replaceTag(body, 'a6_3', '■');
+    if (aid.includes('杯子')) replaceTag(body, 'a6_4', '■');
+    if (aid.includes('撥桿')) replaceTag(body, 'a10_1', '■');
+    if (aid.includes('感光')) replaceTag(body, 'a10_2', '■');
+    if (aid.includes('滑鼠')) replaceTag(body, 'a12_1', '■');
+    if (aid.includes('鍵盤')) replaceTag(body, 'a12_2', '■');
+    if (aid.includes('穿衣')) replaceTag(body, 'a14_1', '■');
+    if (aid.includes('穿褲')) replaceTag(body, 'a14_2', '■');
+  });
+
+  // 7. 四、主要問題 (p1 ~ p15)
+  for (let i = 1; i <= 15; i++) {
+    replaceTag(body, `p${i}`, '□');
+  }
+  replaceTag(body, 'p_other', '');
+
+  const problems = [].concat(formData['主要問題（可複選）'] || formData['主要問題'] || []);
+  problems.forEach(p => {
+    Object.keys(PROBLEM_MAP).forEach(key => {
+      if (p.includes(key)) {
+        replaceTag(body, PROBLEM_MAP[key], '■');
+      }
+    });
+  });
+
+  // 8. 五、短期目標 (st1 ~ st15)
+  for (let i = 1; i <= 15; i++) {
+    replaceTag(body, `st${i}`, '□');
+  }
+  replaceTag(body, 'st_other', '');
+
+  const shortGoals = [].concat(formData['◎ 短期目標（可複選）'] || formData['短期目標'] || []);
+  shortGoals.forEach(g => {
+    Object.keys(SHORT_TERM_MAP).forEach(key => {
+      if (g.includes(key)) {
+        replaceTag(body, SHORT_TERM_MAP[key], '■');
+      }
+    });
+  });
+
+  // 9. 五、長期目標 (lt1 ~ lt8)
+  for (let i = 1; i <= 8; i++) {
+    replaceTag(body, `lt${i}`, '□');
+  }
+  replaceTag(body, 'lt_other', '');
+
+  const ltChoices = [].concat(formData['◎ 長期目標（可複選）'] || formData['長期目標'] || []);
+  ltChoices.forEach(item => {
+    Object.keys(LONG_TERM_MAP).forEach(key => {
+      if (item.includes(key)) {
+        replaceTag(body, LONG_TERM_MAP[key], '■');
+      }
+    });
+  });
+
+  // 10. 六、介入項目：只留下選擇的項目，區分【個別】與【團體】
+  const rawIntervention = [].concat(
+    formData['介入項目（可複選）'] || formData['介入項目'] || formData['介入項目勾選'] || []
+  );
+  let indList = [];
+  let grpList = [];
+
+  rawIntervention.forEach(item => {
+    const s = String(item).trim();
+    if (s.startsWith('個：') || s.startsWith('個:')) {
+      indList.push('• ' + s.replace(/^個[：:]/, '').trim());
+    } else if (s.startsWith('團：') || s.startsWith('團:')) {
+      grpList.push('• ' + s.replace(/^團[：:]/, '').trim());
+    } else if (s) {
+      indList.push('• ' + s);
+    }
+  });
+
+  let outputParts = [];
+  if (indList.length > 0) outputParts.push('【個別介入】\n' + indList.join('\n'));
+  if (grpList.length > 0) outputParts.push('【團體介入】\n' + grpList.join('\n'));
+  replaceTag(body, 'intervention_items', outputParts.length > 0 ? outputParts.join('\n\n') : '無');
+
+  // 11. 清除未用到的殘留標籤
+  body.replaceText('\\{\\{[^}]*\\}\\}', '');
+
+  newDoc.saveAndClose();
+  Logger.log(`✅ 成功產出評估單：${newFileName}`);
+}
